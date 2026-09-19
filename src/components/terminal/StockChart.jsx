@@ -52,6 +52,10 @@ export default function StockChart({
   const [rateLimited, setRateLimited] =
     useState(false);
 
+  // Increasing this number re-runs the load (Retry button).
+  const [attempt, setAttempt] =
+    useState(0);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -139,13 +143,17 @@ export default function StockChart({
         /*
          * Birdeye returns HTTP 429 when the
          * historical endpoint is temporarily
-         * rate limited.
+         * rate limited. market.js turns that
+         * into a "rate limited" message.
          */
         if (
           message.includes("429") ||
           message
             .toLowerCase()
-            .includes("too many requests")
+            .includes("too many requests") ||
+          message
+            .toLowerCase()
+            .includes("rate limited")
         ) {
           setRateLimited(true);
 
@@ -176,6 +184,8 @@ export default function StockChart({
   }, [
     stock?.solana?.address,
     timeframe,
+    attempt,
+    data.length,
   ]);
 
   return (
@@ -237,6 +247,19 @@ export default function StockChart({
                 Please try again shortly.
               </small>
             )}
+
+            <button
+              onClick={() =>
+                setAttempt(
+                  (count) => count + 1
+                )
+              }
+              style={{
+                marginTop: "12px",
+              }}
+            >
+              Retry
+            </button>
           </div>
         ) : data.length === 0 ? (
           <div className="chart-state">

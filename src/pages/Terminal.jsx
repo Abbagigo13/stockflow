@@ -10,6 +10,7 @@ import {
   Wallet,
 } from "lucide-react";
 
+import StockChart from "../components/terminal/StockChart";
 import { useStock } from "../hooks/useStock";
 import { stocks } from "../data/stocks";
 
@@ -513,12 +514,22 @@ export default function Terminal({
 
                 </div>
 
-                {/* MARKET VISUAL */}
+                {/* PRICE CHART (real Birdeye data) */}
 
-                <div className="fake-chart">
+                <div style={{ margin: "24px 0" }}>
 
-                  <div className="chart-header">
-
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent:
+                        "space-between",
+                      alignItems: "center",
+                      marginBottom: "12px",
+                      fontSize: "11px",
+                      letterSpacing: "0.08em",
+                      opacity: 0.7,
+                    }}
+                  >
                     <span>
                       {symbol} · SOLANA MARKET
                     </span>
@@ -528,14 +539,9 @@ export default function Terminal({
                         ? "UPDATING"
                         : "LIVE"}
                     </span>
-
                   </div>
 
-                  <div className="chart-grid" />
-
-                  <div className="terminal-chart-line">
-                    ╱╲___╱╲____╱╲___╱╲____╱╲__
-                  </div>
+                  <StockChart stock={stock} />
 
                 </div>
 
