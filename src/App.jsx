@@ -5,6 +5,9 @@ import "./App.css";
 import Landing from "./pages/Landing";
 import Terminal from "./pages/Terminal";
 import Stock from "./pages/Stock";
+import Portfolio from "./pages/Portfolio";
+
+import { useWallet } from "./hooks/useWallet";
 
 function App() {
   const [page, setPage] =
@@ -15,6 +18,15 @@ function App() {
 
   const [mobileOpen, setMobileOpen] =
     useState(false);
+
+  const {
+    address,
+    connected,
+    connecting,
+    error: walletError,
+    connectWallet,
+    disconnectWallet,
+  } = useWallet();
 
   function navigate(
     nextPage,
@@ -37,6 +49,12 @@ function App() {
         onSelectStock={(symbol) =>
           navigate("stock", symbol)
         }
+        address={address}
+        connected={connected}
+        connecting={connecting}
+        walletError={walletError}
+        onConnect={connectWallet}
+        onDisconnect={disconnectWallet}
       />
     );
   }
@@ -48,6 +66,19 @@ function App() {
         onBack={() =>
           navigate("terminal")
         }
+      />
+    );
+  }
+
+  if (page === "portfolio") {
+    return (
+      <Portfolio
+        address={address}
+        connected={connected}
+        connecting={connecting}
+        walletError={walletError}
+        onConnect={connectWallet}
+        onDisconnect={disconnectWallet}
       />
     );
   }

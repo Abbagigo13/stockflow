@@ -928,3 +928,33 @@ export async function getStockData(
       null,
   };
 }
+export async function fetchAssetFromServer(symbol) {
+  if (!symbol) {
+    throw new Error("Missing asset symbol");
+  }
+
+  const response = await fetch(
+    `/api/xstocks-asset?symbol=${encodeURIComponent(symbol)}`
+  );
+
+  const responseText = await response.text();
+
+  let data;
+
+  try {
+    data = JSON.parse(responseText);
+  } catch {
+    throw new Error(
+      "Asset proxy returned an invalid response"
+    );
+  }
+
+  if (!response.ok || !data.success) {
+    throw new Error(
+      data?.error ||
+        "Unable to fetch asset through server"
+    );
+  }
+
+  return data.asset;
+}

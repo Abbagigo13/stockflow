@@ -16,6 +16,12 @@ import { stocks } from "../data/stocks";
 export default function Terminal({
   onNavigate,
   onSelectStock,
+  address,
+  connected,
+  connecting,
+  walletError,
+  onConnect,
+  onDisconnect,
 }) {
   const [symbol, setSymbol] = useState("NVDAx");
   const [search, setSearch] = useState("");
@@ -42,12 +48,6 @@ export default function Terminal({
   function handleStockClick(nextSymbol) {
     setSymbol(nextSymbol);
 
-    /*
-      IMPORTANT:
-      This navigates to the separate Stock page.
-      The stock information will NOT be rendered
-      inside this Terminal page.
-    */
     if (onSelectStock) {
       onSelectStock(nextSymbol);
     }
@@ -95,6 +95,15 @@ export default function Terminal({
     )}%`;
   }
 
+  function formatWallet(address) {
+    if (!address) return "Connect Wallet";
+
+    return `${address.slice(
+      0,
+      6
+    )}...${address.slice(-6)}`;
+  }
+
   return (
     <div className="terminal-page">
 
@@ -116,14 +125,24 @@ export default function Terminal({
           MARKET
         </div>
 
-        <button className="side-link active">
+        <button
+          className="side-link active"
+          onClick={() =>
+            onNavigate?.("terminal")
+          }
+        >
           <Activity size={16} />
           Terminal
         </button>
 
-        <button className="side-link">
+        <button
+          className="side-link"
+          onClick={() =>
+            onNavigate?.("portfolio")
+          }
+        >
           <Brain size={16} />
-          AI Intelligence
+          AI Portfolio
         </button>
 
         <button className="side-link">
@@ -141,10 +160,34 @@ export default function Terminal({
             <span>Solana Mainnet</span>
           </div>
 
-          <button className="wallet-button">
-            <Wallet size={15} />
-            Connect Wallet
-          </button>
+          {connected ? (
+            <button
+              className="wallet-button"
+              onClick={onDisconnect}
+              title="Disconnect wallet"
+            >
+              <Wallet size={15} />
+              {formatWallet(address)}
+            </button>
+          ) : (
+            <button
+              className="wallet-button"
+              onClick={onConnect}
+              disabled={connecting}
+            >
+              <Wallet size={15} />
+
+              {connecting
+                ? "Connecting..."
+                : "Connect Wallet"}
+            </button>
+          )}
+
+          {walletError && (
+            <div className="wallet-error">
+              {walletError}
+            </div>
+          )}
 
         </div>
 
@@ -198,6 +241,7 @@ export default function Terminal({
 
           <div>
             <span>ASSET</span>
+
             <strong>
               {stock?.symbol || symbol}
             </strong>
@@ -205,6 +249,7 @@ export default function Terminal({
 
           <div>
             <span>PRICE</span>
+
             <strong>
               {formatPrice(stock?.price)}
             </strong>
@@ -261,6 +306,7 @@ export default function Terminal({
             <div className="panel-heading">
 
               <div>
+
                 <span className="section-label">
                   WATCHLIST
                 </span>
@@ -268,6 +314,7 @@ export default function Terminal({
                 <h2>
                   Tokenized equities
                 </h2>
+
               </div>
 
               <span>
@@ -466,7 +513,7 @@ export default function Terminal({
 
                 </div>
 
-                {/* SIMPLE MARKET VISUAL */}
+                {/* MARKET VISUAL */}
 
                 <div className="fake-chart">
 
