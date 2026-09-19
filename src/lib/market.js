@@ -97,6 +97,10 @@ function getHistoricalCacheKey(
  *     price: 218.50
  *   }
  * ]
+ *
+ * NOTE: when the request uses ui_amount_mode=scaled,
+ * Birdeye names each price "scaledValue" instead of
+ * "value", so scaledValue is checked first.
  */
 function normalizeHistoricalData(result) {
   const rawData = result?.data;
@@ -112,8 +116,8 @@ function normalizeHistoricalData(result) {
    * data: {
    *   items: [
    *     {
-   *       unix_time: 1234567890,
-   *       value: 218.50
+   *       unixTime: 1234567890,
+   *       scaledValue: 218.50
    *     }
    *   ]
    * }
@@ -131,7 +135,8 @@ function normalizeHistoricalData(result) {
 
         const price =
           Number(
-            item?.value ??
+            item?.scaledValue ??
+              item?.value ??
               item?.price ??
               item?.valueUsd ??
               item?.priceUsd
@@ -206,7 +211,8 @@ function normalizeHistoricalData(result) {
 
         price:
           Number(
-            item?.value ??
+            item?.scaledValue ??
+              item?.value ??
               item?.price ??
               item?.valueUsd ??
               item?.priceUsd
