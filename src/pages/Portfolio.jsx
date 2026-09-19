@@ -18,6 +18,7 @@ import {
 } from "../lib/market";
 
 import { fetchJupiterQuote } from "../lib/jupiterQuote";
+import DevnetDemoPanel from "../components/DevnetDemoPanel";
 
 export default function Portfolio({
   address,
@@ -395,6 +396,10 @@ const [quoteError, setQuoteError] = useState("");
   </div>
 )}
 
+<DevnetDemoPanel
+  address={address}
+  allocations={portfolio.allocations}
+/>
 
   </div>
 )}
