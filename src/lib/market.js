@@ -1,6 +1,3 @@
-const XSTOCKS_API =
-  "https://api.xstocks.fi/api/v2/public";
-
 const JUPITER_API =
   "https://api.jup.ag/price/v3";
 
@@ -25,18 +22,13 @@ const HISTORICAL_CACHE_DURATION =
    XSTOCKS
 ========================================================= */
 
+/*
+ * Browsers cannot call api.xstocks.fi directly (the browser
+ * blocks it with a CORS error), so asset data is loaded
+ * through our own server function at /api/xstocks-asset.
+ */
 export async function fetchAsset(symbol) {
-  const response = await fetch(
-    `${XSTOCKS_API}/assets/${encodeURIComponent(symbol)}`
-  );
-
-  if (!response.ok) {
-    throw new Error(
-      `Failed to fetch ${symbol} asset`
-    );
-  }
-
-  return response.json();
+  return fetchAssetFromServer(symbol);
 }
 
 
