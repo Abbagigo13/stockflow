@@ -23,6 +23,12 @@ const STOCK_SYMBOLS = [
   "AAPLx",
   "TSLAx",
   "SPYx",
+  "MSFTx",
+  "AMZNx",
+  "GOOGLx",
+  "METAx",
+  "QQQx",
+  "COINx",
 ];
 
 function shortenAddress(address) {
@@ -356,7 +362,11 @@ export function usePortfolio(address) {
     );
 
   useEffect(() => {
-    refreshPortfolio(true);
+    const timeoutId = setTimeout(() => {
+      refreshPortfolio(true);
+    }, 0);
+
+    return () => clearTimeout(timeoutId);
   }, [refreshPortfolio]);
 
   return {

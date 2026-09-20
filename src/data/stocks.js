@@ -23,4 +23,40 @@ export const stocks = [
     underlyingSymbol: "SPY",
     category: "ETF",
   },
+    {
+    symbol: "MSFTx",
+    name: "Microsoft xStock",
+    underlyingSymbol: "MSFT",
+    category: "Technology",
+  },
+  {
+    symbol: "AMZNx",
+    name: "Amazon.com xStock",
+    underlyingSymbol: "AMZN",
+    category: "Consumer",
+  },
+  {
+    symbol: "GOOGLx",
+    name: "Alphabet xStock",
+    underlyingSymbol: "GOOGL",
+    category: "Technology",
+  },
+  {
+    symbol: "METAx",
+    name: "Meta xStock",
+    underlyingSymbol: "META",
+    category: "Technology",
+  },
+  {
+    symbol: "QQQx",
+    name: "Nasdaq xStock",
+    underlyingSymbol: "QQQ",
+    category: "ETF",
+  },
+  {
+    symbol: "COINx",
+    name: "Coinbase xStock",
+    underlyingSymbol: "COIN",
+    category: "Financials",
+  },
 ];
