@@ -15,7 +15,13 @@ import {
 
 import { fetchHistoricalPrices } from "../../lib/market";
 
+import "./StockChart.css";
+
 const CACHE_DURATION = 2 * 60 * 1000;
+
+const ACCENT = "#3dffa0";
+const NEGATIVE = "#ff5a7a";
+const TIMEFRAMES = ["1H", "1D", "1W", "1M"];
 
 const chartCache = new Map();
 
@@ -23,12 +29,46 @@ function getCacheKey(address, timeframe) {
   return `${address}:${timeframe}`;
 }
 
-function formatChartData(prices) {
+/*
+ * Short label for the bottom axis. Longer timeframes
+ * show dates, because repeating times of day is confusing.
+ */
+function formatLabel(timestamp, timeframe) {
+  const date = new Date(timestamp);
+
+  if (timeframe === "1M") {
+    return date.toLocaleDateString([], {
+      month: "short",
+      day: "numeric",
+    });
+  }
+
+  if (timeframe === "1W") {
+    return `${date.toLocaleDateString([], {
+      weekday: "short",
+    })} ${date.toLocaleTimeString([], {
+      hour: "numeric",
+    })}`;
+  }
+
+  return date.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function formatChartData(prices, timeframe) {
   return prices.map((item) => ({
-    time: new Date(
+    label: formatLabel(
+      item.timestamp,
+      timeframe
+    ),
+    fullTime: new Date(
       item.timestamp
-    ).toLocaleTimeString([], {
-      hour: "2-digit",
+    ).toLocaleString([], {
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
       minute: "2-digit",
     }),
     price: item.price,
@@ -37,6 +77,7 @@ function formatChartData(prices) {
 
 export default function StockChart({
   stock,
+  height = 360,
 }) {
   const [timeframe, setTimeframe] =
     useState("1D");
@@ -56,13 +97,12 @@ export default function StockChart({
   const [attempt, setAttempt] =
     useState(0);
 
+  const address = stock?.solana?.address;
+
   useEffect(() => {
     let cancelled = false;
 
     async function load() {
-      const address =
-        stock?.solana?.address;
-
       if (!address) {
         setData([]);
         setLoading(false);
@@ -87,8 +127,8 @@ export default function StockChart({
        */
       if (
         cached &&
-        Date.now() - cached.timestamp <
-          CACHE_DURATION
+        Date.now() - cached.timestamp 
+          < CACHE_DURATION
       ) {
         setData(cached.data);
         setError(null);
@@ -113,7 +153,10 @@ export default function StockChart({
         }
 
         const formatted =
-          formatChartData(prices);
+          formatChartData(
+            prices,
+            timeframe
+          );
 
         /*
          * Save successful requests so switching
@@ -140,35 +183,26 @@ export default function StockChart({
           err?.message ||
           "Unable to load chart";
 
-        /*
-         * Birdeye returns HTTP 429 when the
-         * historical endpoint is temporarily
-         * rate limited. market.js turns that
-         * into a "rate limited" message.
-         */
-        if (
-          message.includes("429") ||
-          message
-            .toLowerCase()
-            .includes("too many requests") ||
-          message
-            .toLowerCase()
-            .includes("rate limited")
-        ) {
-          setRateLimited(true);
+        const lower =
+          message.toLowerCase();
 
-          /*
-           * Don't destroy an already loaded chart
-           * just because a refresh was rate limited.
-           */
-          if (data.length === 0) {
-            setError(
-              "Historical data is temporarily rate limited. Live market data is still available."
-            );
-          }
-        } else {
-          setError(message);
-        }
+        const limited =
+          message.includes("429") ||
+          lower.includes(
+            "too many requests"
+          ) ||
+          lower.includes(
+            "rate limited"
+          );
+
+        setData([]);
+        setRateLimited(limited);
+
+        setError(
+          limited
+            ? "Chart data is temporarily rate limited. Live prices are still available."
+            : message
+        );
       } finally {
         if (!cancelled) {
           setLoading(false);
@@ -181,23 +215,22 @@ export default function StockChart({
     return () => {
       cancelled = true;
     };
-  }, [
-    stock?.solana?.address,
-    timeframe,
-    attempt,
-    data.length,
-  ]);
+  }, [address, timeframe, attempt]);
+
+  const change =
+    data.length > 1 &&
+    data[0].price > 0
+      ? ((data[data.length - 1].price -
+          data[0].price) /
+          data[0].price) *
+        100
+      : null;
 
   return (
-    <div className="stock-chart">
-      <div className="stock-chart-toolbar">
-        <div className="chart-timeframes">
-          {[
-            "1H",
-            "1D",
-            "1W",
-            "1M",
-          ].map((item) => (
+    <div className="sfc-root">
+      <div className="sfc-toolbar">
+        <div className="sfc-timeframes">
+          {TIMEFRAMES.map((item) => (
             <button
               key={item}
               className={
@@ -214,124 +247,184 @@ export default function StockChart({
           ))}
         </div>
 
-        <span>
-          {loading
-            ? "Loading..."
-            : rateLimited
-              ? "Rate limited"
-              : error
-                ? "Unavailable"
-                : `${data.length} points`}
+        <span className="sfc-status">
+          {loading ? (
+            "Loading..."
+          ) : error ? (
+            rateLimited ? (
+              "Rate limited"
+            ) : (
+              "Unavailable"
+            )
+          ) : (
+            <>
+              {data.length} points
+              {change !== null && (
+                <>
+                  {" · "}
+                  <span
+                    style={{
+                      color:
+                        change >= 0
+                          ? ACCENT
+                          : NEGATIVE,
+                    }}
+                  >
+                    {change >= 0
+                      ? "+"
+                      : ""}
+                    {change.toFixed(2)}%
+                    {" over "}
+                    {timeframe}
+                  </span>
+                </>
+              )}
+            </>
+          )}
         </span>
       </div>
 
-      <div className="stock-chart-area">
+      <div className="sfc-area">
         {loading ? (
-          <div className="chart-state">
-            Loading historical data...
-          </div>
+          <div
+            className="sfc-skeleton"
+            style={{ height }}
+          />
         ) : error ? (
-          <div className="chart-state">
-            <div>
-              {error}
-            </div>
+          <div
+            className="sfc-state"
+            style={{ minHeight: height }}
+          >
+            <div>{error}</div>
 
             {rateLimited && (
-              <small
-                style={{
-                  display: "block",
-                  marginTop: "8px",
-                  opacity: 0.6,
-                }}
-              >
+              <small>
                 Please try again shortly.
               </small>
             )}
 
             <button
+              className="sfc-retry"
               onClick={() =>
                 setAttempt(
                   (count) => count + 1
                 )
               }
-              style={{
-                marginTop: "12px",
-              }}
             >
               Retry
             </button>
           </div>
         ) : data.length === 0 ? (
-          <div className="chart-state">
-            No historical data available.
+          <div
+            className="sfc-state"
+            style={{ minHeight: height }}
+          >
+            <div>
+              No price data for this
+              period.
+            </div>
+
+            <small>
+              Try a longer timeframe.
+            </small>
           </div>
         ) : (
-          <>
-            {rateLimited && (
-              <div
-                style={{
-                  padding:
-                    "8px 12px",
-                  fontSize: "11px",
-                  opacity: 0.65,
-                  textAlign: "right",
+          <ResponsiveContainer
+            width="100%"
+            height={height}
+          >
+            <AreaChart data={data}>
+              <defs>
+                <linearGradient
+                  id="sfcFill"
+                  x1="0"
+                  y1="0"
+                  x2="0"
+                  y2="1"
+                >
+                  <stop
+                    offset="0%"
+                    stopColor={ACCENT}
+                    stopOpacity={0.28}
+                  />
+                  <stop
+                    offset="100%"
+                    stopColor={ACCENT}
+                    stopOpacity={0}
+                  />
+                </linearGradient>
+              </defs>
+
+              <CartesianGrid
+                strokeDasharray="3 3"
+                stroke="rgba(255,255,255,0.08)"
+                vertical={false}
+              />
+
+              <XAxis
+                dataKey="label"
+                tick={{
+                  fontSize: 10,
+                  fill: "rgba(255,255,255,0.5)",
                 }}
-              >
-                Showing cached data ·
-                live price continues
-                streaming
-              </div>
-            )}
+                axisLine={false}
+                tickLine={false}
+                minTickGap={30}
+              />
 
-            <ResponsiveContainer
-              width="100%"
-              height={360}
-            >
-              <AreaChart
-                data={data}
-              >
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  strokeOpacity={0.12}
-                />
+              <YAxis
+                domain={["auto", "auto"]}
+                tick={{
+                  fontSize: 10,
+                  fill: "rgba(255,255,255,0.5)",
+                }}
+                axisLine={false}
+                tickLine={false}
+                width={70}
+                tickFormatter={(value) =>
+                  `$${Number(value).toFixed(2)}`
+                }
+              />
 
-                <XAxis
-                  dataKey="time"
-                  tick={{
-                    fontSize: 10,
-                  }}
-                  minTickGap={30}
-                />
+              <Tooltip
+                contentStyle={{
+                  background: "#0b0f0d",
+                  border:
+                    "1px solid rgba(255,255,255,0.12)",
+                  borderRadius: 8,
+                  fontSize: 12,
+                }}
+                labelStyle={{
+                  color:
+                    "rgba(255,255,255,0.6)",
+                }}
+                formatter={(value) => [
+                  `$${Number(value).toFixed(2)}`,
+                  "Price",
+                ]}
+                labelFormatter={(
+                  label,
+                  payload
+                ) =>
+                  payload?.[0]?.payload
+                    ?.fullTime ?? label
+                }
+              />
 
-                <YAxis
-                  domain={[
-                    "auto",
-                    "auto",
-                  ]}
-                  tick={{
-                    fontSize: 10,
-                  }}
-                  width={70}
-                />
-
-                <Tooltip
-                  formatter={(value) =>
-                    `$${Number(
-                      value
-                    ).toFixed(2)}`
-                  }
-                />
-
-                <Area
-                  type="monotone"
-                  dataKey="price"
-                  strokeWidth={2}
-                  fillOpacity={0.08}
-                  dot={false}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </>
+              <Area
+                type="monotone"
+                dataKey="price"
+                stroke={ACCENT}
+                strokeWidth={2}
+                fill="url(#sfcFill)"
+                dot={false}
+                activeDot={{
+                  r: 4,
+                  fill: ACCENT,
+                }}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
         )}
       </div>
     </div>

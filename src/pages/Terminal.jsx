@@ -28,11 +28,21 @@ export default function Terminal({
   const [search, setSearch] = useState("");
 
   const {
-    stock,
+    stock: loadedStock,
     loading,
     error,
     refreshing,
   } = useStock(symbol);
+
+  /*
+   * While a new asset is loading (or failed), don't show the
+   * previous asset's numbers. The boxes show dashes instead.
+   */
+  const stock = loading || error ? null : loadedStock;
+
+  const selectedItem = stocks.find(
+    (item) => item.symbol === symbol
+  );
 
   const filteredStocks = stocks.filter((item) => {
     const query = search.toLowerCase();
@@ -46,11 +56,15 @@ export default function Terminal({
     );
   });
 
-  function handleStockClick(nextSymbol) {
+  // Clicking a watchlist row previews the asset here.
+  function handleSelect(nextSymbol) {
     setSymbol(nextSymbol);
+  }
 
+  // The full analysis page opens from the preview.
+  function handleOpenAnalysis() {
     if (onSelectStock) {
-      onSelectStock(nextSymbol);
+      onSelectStock(symbol);
     }
   }
 
@@ -324,6 +338,19 @@ export default function Terminal({
 
             </div>
 
+            <p
+              style={{
+                fontSize: "12px",
+                opacity: 0.6,
+                margin: "4px 0 12px",
+                lineHeight: 1.5,
+              }}
+            >
+              Select an asset to preview it.
+              Open the full analysis from the
+              preview.
+            </p>
+
             <div className="stock-list">
 
               {filteredStocks.map((item) => (
@@ -336,7 +363,7 @@ export default function Terminal({
                       : ""
                   }`}
                   onClick={() =>
-                    handleStockClick(
+                    handleSelect(
                       item.symbol
                     )
                   }
@@ -388,11 +415,13 @@ export default function Terminal({
 
                 <h2>
                   {stock?.name ||
+                    selectedItem?.name ||
                     "Loading asset..."}
                 </h2>
 
                 <p>
                   {stock?.underlyingSymbol ||
+                    selectedItem?.underlyingSymbol ||
                     symbol}
                   {" · "}
                   {stock?.trading?.exchange ||
@@ -401,7 +430,24 @@ export default function Terminal({
 
               </div>
 
-              <div className="score-badge">
+              <div
+                className="score-badge"
+                role="button"
+                tabIndex={0}
+                title="Open full analysis"
+                aria-label={`Open ${symbol} full analysis`}
+                style={{ cursor: "pointer" }}
+                onClick={handleOpenAnalysis}
+                onKeyDown={(event) => {
+                  if (
+                    event.key === "Enter" ||
+                    event.key === " "
+                  ) {
+                    event.preventDefault();
+                    handleOpenAnalysis();
+                  }
+                }}
+              >
 
                 <Brain size={15} />
 
@@ -541,7 +587,10 @@ export default function Terminal({
                     </span>
                   </div>
 
-                  <StockChart stock={stock} />
+                  <StockChart
+                    stock={stock}
+                    height={300}
+                  />
 
                 </div>
 
@@ -635,16 +684,16 @@ export default function Terminal({
                   </div>
 
                   <p className="ai-observation">
-                    Select an asset to open its
-                    complete StockFlow intelligence
-                    profile.
+                    Open the complete StockFlow
+                    intelligence profile for{" "}
+                    {symbol}: AI score, bull and
+                    bear cases, key risks and
+                    onchain details.
                   </p>
 
                   <button
                     className="primary-button"
-                    onClick={() =>
-                      handleStockClick(symbol)
-                    }
+                    onClick={handleOpenAnalysis}
                   >
                     Open {symbol} analysis
                     <ChevronRight size={16} />

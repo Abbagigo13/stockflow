@@ -1,0 +1,660 @@
+/* =========================================================
+   StockFlow portfolio review modal (all classes start with sfr-)
+========================================================= */
+
+.sfr-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  padding: 32px 16px;
+  overflow-y: auto;
+  background: rgba(2, 6, 4, 0.78);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.sfr-modal {
+  position: relative;
+  width: 100%;
+  max-width: 760px;
+  margin: auto;
+  padding: 28px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: linear-gradient(180deg, #0e1512 0%, #080b0a 100%);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
+  color: #ffffff;
+}
+
+/* ---------- header ---------- */
+
+.sfr-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.sfr-eyebrow {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: #3dffa0;
+}
+
+.sfr-title {
+  margin: 6px 0 4px;
+  font-size: 26px;
+  line-height: 1.2;
+  font-weight: 700;
+}
+
+.sfr-sub {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.sfr-close {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: transparent;
+  color: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.sfr-close:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* ---------- badge ---------- */
+
+.sfr-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 16px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #3dffa0;
+  background: rgba(61, 255, 160, 0.1);
+  border: 1px solid rgba(61, 255, 160, 0.3);
+}
+
+.sfr-badge-devnet {
+  color: #ffc857;
+  background: rgba(255, 200, 87, 0.1);
+  border-color: rgba(255, 200, 87, 0.35);
+}
+
+/* ---------- step indicator ---------- */
+
+.sfr-steps {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 22px 0;
+  padding: 0;
+}
+
+.sfr-step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.45);
+  white-space: nowrap;
+}
+
+.sfr-step-dot {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  font-size: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.sfr-step.current {
+  color: #ffffff;
+}
+
+.sfr-step.current .sfr-step-dot {
+  border-color: #3dffa0;
+  color: #3dffa0;
+  box-shadow: 0 0 0 4px rgba(61, 255, 160, 0.12);
+}
+
+.sfr-step.done {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.sfr-step.done .sfr-step-dot {
+  background: #3dffa0;
+  border-color: #3dffa0;
+  color: #04120a;
+}
+
+.sfr-step-line {
+  flex: 1;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.sfr-step-line.done {
+  background: #3dffa0;
+}
+
+/* ---------- cards / stats ---------- */
+
+.sfr-total {
+  padding: 18px 20px;
+  border-radius: 14px;
+  background: rgba(61, 255, 160, 0.06);
+  border: 1px solid rgba(61, 255, 160, 0.18);
+}
+
+.sfr-total span,
+.sfr-stat span {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.sfr-total strong {
+  display: block;
+  margin-top: 6px;
+  font-size: 32px;
+  line-height: 1.1;
+}
+
+.sfr-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 14px 0;
+}
+
+.sfr-stat {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.sfr-stat strong {
+  display: block;
+  margin-top: 6px;
+  font-size: 15px;
+  overflow-wrap: anywhere;
+  text-transform: capitalize;
+}
+
+.sfr-stat strong.ok {
+  color: #3dffa0;
+}
+
+.sfr-stat strong.bad {
+  color: #ff5a7a;
+}
+
+.sfr-section {
+  margin-top: 22px;
+}
+
+.sfr-muted {
+  margin: 6px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+/* ---------- allocation rows ---------- */
+
+.sfr-alloc {
+  padding: 14px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.sfr-alloc:last-child {
+  border-bottom: 0;
+}
+
+.sfr-alloc-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.sfr-alloc-top p {
+  margin: 4px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.sfr-alloc-amount {
+  flex-shrink: 0;
+  text-align: right;
+}
+
+.sfr-alloc-amount strong,
+.sfr-alloc-amount span {
+  display: block;
+}
+
+.sfr-alloc-amount span {
+  margin-top: 2px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.sfr-bar {
+  height: 6px;
+  margin-top: 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.sfr-bar div {
+  height: 100%;
+  border-radius: 999px;
+  background: #3dffa0;
+}
+
+/* ---------- notices ---------- */
+
+.sfr-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 16px 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  font-size: 13px;
+  line-height: 1.5;
+  background: rgba(61, 255, 160, 0.07);
+  border: 1px solid rgba(61, 255, 160, 0.2);
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.sfr-notice svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: #3dffa0;
+}
+
+.sfr-notice p {
+  margin: 0;
+}
+
+.sfr-warn {
+  margin: 10px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #ffc857;
+}
+
+.sfr-error,
+.sfr-success {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.sfr-error {
+  background: rgba(255, 90, 122, 0.08);
+  border: 1px solid rgba(255, 90, 122, 0.3);
+  color: #ff8fa5;
+}
+
+.sfr-success {
+  background: rgba(61, 255, 160, 0.08);
+  border: 1px solid rgba(61, 255, 160, 0.3);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.sfr-success svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: #3dffa0;
+}
+
+.sfr-success a {
+  color: #3dffa0;
+}
+
+.sfr-error svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+/* ---------- buttons ---------- */
+
+.sfr-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.sfr-actions.start {
+  justify-content: flex-start;
+  margin-top: 4px;
+}
+
+.sfr-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px 18px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: filter 0.15s ease, background 0.15s ease, opacity 0.15s ease;
+}
+
+.sfr-btn-primary {
+  background: #3dffa0;
+  color: #04120a;
+}
+
+.sfr-btn-primary:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.sfr-btn-ghost {
+  background: transparent;
+  color: rgba(255, 255, 255, 0.85);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.sfr-btn-ghost:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.sfr-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.sfr-btn:focus-visible,
+.sfr-close:focus-visible,
+.sfr-switch:focus-visible {
+  outline: 2px solid #3dffa0;
+  outline-offset: 2px;
+}
+
+/* ---------- quote rows ---------- */
+
+.sfr-quote {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.sfr-quote:last-child {
+  border-bottom: 0;
+}
+
+.sfr-quote strong,
+.sfr-quote span,
+.sfr-quote small {
+  display: block;
+}
+
+.sfr-quote > div:first-child span {
+  margin-top: 2px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.sfr-quote-right {
+  text-align: right;
+}
+
+.sfr-quote-right small {
+  margin-top: 4px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.sfr-pill {
+  display: inline-block !important;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.sfr-pill.ok {
+  color: #3dffa0;
+  background: rgba(61, 255, 160, 0.12);
+}
+
+.sfr-pill.bad {
+  color: #ff8fa5;
+  background: rgba(255, 90, 122, 0.12);
+}
+
+.sfr-pill.muted {
+  color: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* ---------- Devnet panel ---------- */
+
+.sfr-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.sfr-toggle-row p {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.sfr-switch {
+  position: relative;
+  flex-shrink: 0;
+  width: 44px;
+  height: 26px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.sfr-switch span {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ffffff;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.sfr-switch.on {
+  background: #3dffa0;
+  border-color: #3dffa0;
+}
+
+.sfr-switch.on span {
+  transform: translateX(18px);
+  background: #04120a;
+}
+
+.sfr-tasks {
+  list-style: none;
+  margin: 16px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.sfr-task {
+  display: flex;
+  gap: 14px;
+  padding: 16px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.sfr-task.done {
+  border-color: rgba(61, 255, 160, 0.3);
+  background: rgba(61, 255, 160, 0.04);
+}
+
+.sfr-task-num {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  font-size: 13px;
+  font-weight: 700;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.sfr-task.done .sfr-task-num {
+  background: #3dffa0;
+  border-color: #3dffa0;
+  color: #04120a;
+}
+
+.sfr-task-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.sfr-task-body h4 {
+  margin: 3px 0 6px;
+  font-size: 15px;
+}
+
+.sfr-task-body p {
+  margin: 0 0 10px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.sfr-task-body a {
+  color: #3dffa0;
+}
+
+.sfr-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.sfr-check input {
+  width: 16px;
+  height: 16px;
+  accent-color: #3dffa0;
+}
+
+.sfr-mono {
+  display: block;
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  word-break: break-all;
+  user-select: all;
+}
+
+/* ---------- small screens ---------- */
+
+@media (max-width: 560px) {
+  .sfr-overlay {
+    padding: 0;
+  }
+
+  .sfr-modal {
+    min-height: 100%;
+    margin: 0;
+    padding: 20px 16px;
+    border-radius: 0;
+    border-left: 0;
+    border-right: 0;
+  }
+
+  .sfr-title {
+    font-size: 22px;
+  }
+
+  .sfr-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .sfr-step.todo .sfr-step-label,
+  .sfr-step.done .sfr-step-label {
+    display: none;
+  }
+
+  .sfr-alloc-top,
+  .sfr-quote {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .sfr-alloc-amount,
+  .sfr-quote-right {
+    text-align: left;
+  }
+}

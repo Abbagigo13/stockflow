@@ -9,7 +9,7 @@ import {
   Wallet,
   X,
 } from "lucide-react";
-import { useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 
 import { usePortfolioAI } from "../hooks/usePortfolioAI";
 import {
@@ -20,6 +20,32 @@ import {
 import { fetchJupiterQuote } from "../lib/jupiterQuote";
 import DevnetDemoPanel from "../components/DevnetDemoPanel";
 
+import "./PortfolioReview.css";
+
+const REVIEW_STEPS = [
+  {
+    id: 1,
+    label: "Review",
+    title: "Review your portfolio",
+    description:
+      "Check the proposed allocations before proceeding to any onchain transaction.",
+  },
+  {
+    id: 2,
+    label: "Preview",
+    title: "Transaction preview",
+    description:
+      "Review the intended investment before connecting a swap route.",
+  },
+  {
+    id: 3,
+    label: "Devnet test",
+    title: "Devnet wallet test",
+    description:
+      "Try your wallet safely on Solana Devnet with free test SOL. Real mainnet execution is disabled.",
+  },
+];
+
 export default function Portfolio({
   address,
   onConnect,
@@ -29,17 +55,15 @@ export default function Portfolio({
     useState("balanced");
 
   const [goals, setGoals] = useState([
-  "Growth",
-  "Diversification",
-]);
+    "Growth",
+    "Diversification",
+  ]);
 
-const [reviewing, setReviewing] = useState(false);
-const [confirmed, setConfirmed] = useState(false);
-const [transactionPreview, setTransactionPreview] =
-  useState(false);
-const [quoteResults, setQuoteResults] = useState([]);
-const [quoteLoading, setQuoteLoading] = useState(false);
-const [quoteError, setQuoteError] = useState("");
+  const [reviewing, setReviewing] = useState(false);
+  const [reviewStep, setReviewStep] = useState(1);
+  const [quoteResults, setQuoteResults] = useState([]);
+  const [quoteLoading, setQuoteLoading] = useState(false);
+  const [quoteError, setQuoteError] = useState("");
 
   const {
     portfolio,
@@ -49,11 +73,35 @@ const [quoteError, setQuoteError] = useState("");
     reset,
   } = usePortfolioAI();
 
+  // While the review modal is open: Esc closes it and the
+  // page behind it does not scroll.
+  useEffect(() => {
+    if (!reviewing) return undefined;
+
+    function handleKeyDown(event) {
+      if (event.key === "Escape") {
+        setReviewing(false);
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [reviewing]);
+
   const goalOptions = [
     "Growth",
     "Diversification",
     "Income",
   ];
+
+  const currentStep = REVIEW_STEPS[reviewStep - 1];
 
   function toggleGoal(goal) {
     setGoals((current) => {
@@ -74,68 +122,69 @@ const [quoteError, setQuoteError] = useState("");
       goals,
     });
   }
+
   async function handleCheckQuotes() {
-  if (!portfolio?.allocations?.length) {
-    setQuoteError("No portfolio allocations found.");
-    return;
-  }
+    if (!portfolio?.allocations?.length) {
+      setQuoteError("No portfolio allocations found.");
+      return;
+    }
 
-  setQuoteLoading(true);
-  setQuoteError("");
-  setQuoteResults([]);
+    setQuoteLoading(true);
+    setQuoteError("");
+    setQuoteResults([]);
 
-  try {
-    const results = await Promise.all(
-      portfolio.allocations.map(async (item) => {
-        try {
-          const asset = await fetchAssetFromServer(item.symbol);
-          const solana = getSolanaDeployment(asset);
+    try {
+      const results = await Promise.all(
+        portfolio.allocations.map(async (item) => {
+          try {
+            const asset = await fetchAssetFromServer(item.symbol);
+            const solana = getSolanaDeployment(asset);
 
-          if (!solana?.address) {
+            if (!solana?.address) {
+              return {
+                symbol: item.symbol,
+                amount: item.amount,
+                status: "Unavailable",
+                error: "No Solana deployment found",
+              };
+            }
+
+            const quote = await fetchJupiterQuote({
+              outputMint: solana.address,
+              amountUsd: Number(item.amount),
+            });
+
             return {
               symbol: item.symbol,
               amount: item.amount,
-              status: "Unavailable",
-              error: "No Solana deployment found",
+              mint: solana.address,
+              decimals: solana.decimals ?? 6,
+              status: "Quote available",
+              quote,
+            };
+          } catch (error) {
+            return {
+              symbol: item.symbol,
+              amount: item.amount,
+              status: "Failed",
+              error:
+                error?.message ||
+                "Quote request failed",
             };
           }
+        })
+      );
 
-          const quote = await fetchJupiterQuote({
-            outputMint: solana.address,
-            amountUsd: Number(item.amount),
-          });
-
-          return {
-  symbol: item.symbol,
-  amount: item.amount,
-  mint: solana.address,
-  decimals: solana.decimals ?? 6,
-  status: "Quote available",
-  quote,
-};
-        } catch (error) {
-          return {
-            symbol: item.symbol,
-            amount: item.amount,
-            status: "Failed",
-            error:
-  error?.message ||
-  "Quote request failed",
-          };
-        }
-      })
-    );
-
-    setQuoteResults(results);
-  } catch (error) {
-    setQuoteError(
-      error?.message ||
-        "Unable to check portfolio quotes"
-    );
-  } finally {
-    setQuoteLoading(false);
+      setQuoteResults(results);
+    } catch (error) {
+      setQuoteError(
+        error?.message ||
+          "Unable to check portfolio quotes"
+      );
+    } finally {
+      setQuoteLoading(false);
+    }
   }
-}
 
   function formatTokenAmount(amount, decimals = 6) {
     if (!amount) return "—";
@@ -171,246 +220,365 @@ const [quoteError, setQuoteError] = useState("");
   return (
     <div className="portfolio-page">
       {reviewing && portfolio && (
-  <div className="portfolio-review-overlay">
-    <div className="portfolio-review-card">
-
-      <div className="review-header">
-        <div>
-          <span>STOCKFLOW AI</span>
-          <h2>Review your portfolio</h2>
-          <p>
-            Check the proposed allocations before
-            proceeding to any onchain transaction.
-          </p>
-        </div>
-
-        <button
-          className="new-portfolio-button"
-          onClick={() => setReviewing(false)}
+        <div
+          className="sfr-overlay"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              setReviewing(false);
+            }
+          }}
         >
-          Back
-        </button>
-      </div>
-
-      <div className="review-total">
-        <span>TOTAL INVESTMENT</span>
-        <strong>
-          {formatMoney(portfolio.totalInvestment)}
-        </strong>
-      </div>
-
-      <div className="review-details">
-        <div>
-          <span>RISK PROFILE</span>
-          <strong>
-            {portfolio.riskProfile || riskProfile}
-          </strong>
-        </div>
-
-        <div>
-          <span>AI SCORE</span>
-          <strong>
-            {portfolio.aiScore ?? "—"}
-          </strong>
-        </div>
-
-        <div>
-          <span>CONFIDENCE</span>
-          <strong>
-            {portfolio.confidence ?? "—"}
-          </strong>
-        </div>
-      </div>
-
-      <section className="review-allocation">
-        <span>PROPOSED ALLOCATION</span>
-        <h3>Assets to review</h3>
-
-        {portfolio.allocations.map((item) => (
           <div
-            className="review-allocation-row"
-            key={item.symbol}
+            className="sfr-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="sfr-title"
           >
-            <div>
-              <strong>{item.symbol}</strong>
-              <p>{item.reason}</p>
+            <div className="sfr-header">
+              <div>
+                <span className="sfr-eyebrow">
+                  STOCKFLOW AI
+                </span>
+
+                <h2 id="sfr-title" className="sfr-title">
+                  {currentStep.title}
+                </h2>
+
+                <p className="sfr-sub">
+                  {currentStep.description}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                className="sfr-close"
+                aria-label="Close review"
+                onClick={() => setReviewing(false)}
+              >
+                <X size={18} />
+              </button>
             </div>
 
-            <div>
-              <strong>
-                {formatPercentage(item.percentage)}
-              </strong>
-              <span>
-                {formatMoney(item.amount)}
-              </span>
+            <div
+              className={`sfr-badge ${
+                reviewStep === 3 ? "sfr-badge-devnet" : ""
+              }`}
+            >
+              <ShieldCheck size={14} />
+              {reviewStep === 3
+                ? "Devnet · test funds only"
+                : "Preview only · no real funds"}
             </div>
+
+            <ol className="sfr-steps" aria-label="Progress">
+              {REVIEW_STEPS.map((item, index) => {
+                const state =
+                  item.id < reviewStep
+                    ? "done"
+                    : item.id === reviewStep
+                      ? "current"
+                      : "todo";
+
+                return (
+                  <Fragment key={item.id}>
+                    {index > 0 && (
+                      <li
+                        aria-hidden="true"
+                        className={`sfr-step-line ${
+                          item.id <= reviewStep ? "done" : ""
+                        }`}
+                      />
+                    )}
+
+                    <li
+                      className={`sfr-step ${state}`}
+                      aria-current={
+                        state === "current"
+                          ? "step"
+                          : undefined
+                      }
+                    >
+                      <span className="sfr-step-dot">
+                        {state === "done" ? (
+                          <Check size={13} />
+                        ) : (
+                          item.id
+                        )}
+                      </span>
+
+                      <span className="sfr-step-label">
+                        {item.label}
+                      </span>
+                    </li>
+                  </Fragment>
+                );
+              })}
+            </ol>
+
+            {/* STEP 1: REVIEW */}
+
+            {reviewStep === 1 && (
+              <>
+                <div className="sfr-total">
+                  <span>TOTAL INVESTMENT</span>
+                  <strong>
+                    {formatMoney(portfolio.totalInvestment)}
+                  </strong>
+                </div>
+
+                <div className="sfr-stats">
+                  <div className="sfr-stat">
+                    <span>RISK PROFILE</span>
+                    <strong>
+                      {portfolio.riskProfile || riskProfile}
+                    </strong>
+                  </div>
+
+                  <div className="sfr-stat">
+                    <span>AI SCORE</span>
+                    <strong>
+                      {portfolio.aiScore ?? "—"}
+                    </strong>
+                  </div>
+
+                  <div className="sfr-stat">
+                    <span>CONFIDENCE</span>
+                    <strong>
+                      {portfolio.confidence ?? "—"}
+                    </strong>
+                  </div>
+                </div>
+
+                <section className="sfr-section">
+                  <span className="sfr-eyebrow">
+                    PROPOSED ALLOCATION
+                  </span>
+
+                  {portfolio.allocations.map((item) => (
+                    <div className="sfr-alloc" key={item.symbol}>
+                      <div className="sfr-alloc-top">
+                        <div>
+                          <strong>{item.symbol}</strong>
+                          <p>{item.reason}</p>
+                        </div>
+
+                        <div className="sfr-alloc-amount">
+                          <strong>
+                            {formatPercentage(item.percentage)}
+                          </strong>
+                          <span>{formatMoney(item.amount)}</span>
+                        </div>
+                      </div>
+
+                      <div className="sfr-bar">
+                        <div
+                          style={{
+                            width: `${Math.min(
+                              100,
+                              Math.max(
+                                0,
+                                Number(item.percentage) || 0
+                              )
+                            )}%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </section>
+
+                <div className="sfr-notice">
+                  <ShieldCheck size={18} />
+                  <p>
+                    This is a hypothetical AI-generated
+                    allocation. No transaction has been created
+                    or submitted.
+                  </p>
+                </div>
+
+                <div className="sfr-actions">
+                  <button
+                    type="button"
+                    className="sfr-btn sfr-btn-ghost"
+                    onClick={() => setReviewing(false)}
+                  >
+                    Back
+                  </button>
+
+                  <button
+                    type="button"
+                    className="sfr-btn sfr-btn-primary"
+                    onClick={() => setReviewStep(2)}
+                  >
+                    Confirm review and continue
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
+              </>
+            )}
+
+            {/* STEP 2: PREVIEW */}
+
+            {reviewStep === 2 && (
+              <>
+                <div className="sfr-stats">
+                  <div className="sfr-stat">
+                    <span>NETWORK</span>
+                    <strong>Solana</strong>
+                  </div>
+
+                  <div className="sfr-stat">
+                    <span>WALLET</span>
+                    <strong>
+                      {address
+                        ? `${address.slice(0, 6)}...${address.slice(-6)}`
+                        : "Not connected"}
+                    </strong>
+                  </div>
+
+                  <div className="sfr-stat">
+                    <span>STATUS</span>
+                    <strong>Preview only</strong>
+                  </div>
+                </div>
+
+                <div className="sfr-notice">
+                  <ShieldCheck size={18} />
+                  <p>
+                    No wallet signature has been requested. No
+                    funds will be transferred from this preview.
+                  </p>
+                </div>
+
+                <div className="sfr-actions start">
+                  <button
+                    type="button"
+                    className="sfr-btn sfr-btn-primary"
+                    onClick={handleCheckQuotes}
+                    disabled={quoteLoading}
+                  >
+                    {quoteLoading
+                      ? "Checking routes..."
+                      : "Check Jupiter Quotes"}
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
+
+                <p className="sfr-muted">
+                  Quotes come from Jupiter on Solana mainnet. They
+                  are estimates only, and nothing is executed.
+                </p>
+
+                {quoteError && (
+                  <div className="sfr-error">
+                    <X size={16} />
+                    <span>{quoteError}</span>
+                  </div>
+                )}
+
+                {quoteResults.length > 0 && (
+                  <section className="sfr-section">
+                    <span className="sfr-eyebrow">
+                      JUPITER ROUTES
+                    </span>
+
+                    {quoteResults.map((result) => (
+                      <div
+                        className="sfr-quote"
+                        key={result.symbol}
+                      >
+                        <div>
+                          <strong>{result.symbol}</strong>
+                          <span>
+                            {formatMoney(result.amount)}
+                          </span>
+                        </div>
+
+                        <div className="sfr-quote-right">
+                          <span
+                            className={`sfr-pill ${
+                              result.status ===
+                              "Quote available"
+                                ? "ok"
+                                : "bad"
+                            }`}
+                          >
+                            {result.status}
+                          </span>
+
+                          {result.quote?.outAmount && (
+                            <small>
+                              Estimated output:{" "}
+                              {formatTokenAmount(
+                                result.quote.outAmount,
+                                result.decimals
+                              )}{" "}
+                              tokens
+                            </small>
+                          )}
+
+                          {result.error && (
+                            <small>{result.error}</small>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </section>
+                )}
+
+                <div className="sfr-actions">
+                  <button
+                    type="button"
+                    className="sfr-btn sfr-btn-ghost"
+                    onClick={() => setReviewStep(1)}
+                  >
+                    Back
+                  </button>
+
+                  <button
+                    type="button"
+                    className="sfr-btn sfr-btn-primary"
+                    onClick={() => setReviewStep(3)}
+                  >
+                    Continue to Devnet test
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
+              </>
+            )}
+
+            {/* STEP 3: DEVNET TEST */}
+
+            {reviewStep === 3 && (
+              <>
+                <DevnetDemoPanel
+                  address={address}
+                  allocations={portfolio.allocations}
+                  onConnect={onConnect}
+                />
+
+                <div className="sfr-actions">
+                  <button
+                    type="button"
+                    className="sfr-btn sfr-btn-ghost"
+                    onClick={() => setReviewStep(2)}
+                  >
+                    Back
+                  </button>
+
+                  <button
+                    type="button"
+                    className="sfr-btn sfr-btn-primary"
+                    onClick={() => setReviewing(false)}
+                  >
+                    Done
+                  </button>
+                </div>
+              </>
+            )}
           </div>
-        ))}
-      </section>
-
-      <div className="review-notice">
-        <ShieldCheck size={18} />
-        <p>
-          This is a hypothetical AI-generated allocation.
-          No transaction has been created or submitted.
-        </p>
-      </div>
-
-      {!confirmed ? (
-        <button
-          className="generate-portfolio-button"
-          onClick={() => setConfirmed(true)}
-        >
-          Confirm Portfolio Review
-          <ChevronRight size={17} />
-        </button>
-      ) : (
-        <div className="review-confirmed-content">
-        <div className="review-confirmed">
-  <Check size={18} />
-
-  <strong>
-    Portfolio review confirmed.
-  </strong>
-
-  <p>
-    Your allocation review is complete.
-    No transaction has been submitted.
-  </p>
-
-  <button
-    className="generate-portfolio-button"
-    onClick={() => setTransactionPreview(true)}
-  >
-    View Transaction Preview
-    <ChevronRight size={17} />
-  </button>
-</div>
-{transactionPreview && (
-  <div className="transaction-preview">
-    <div className="review-header">
-      <div>
-        <span>ONCHAIN PREVIEW</span>
-        <h3>Transaction details</h3>
-        <p>
-          Review the intended investment before
-          connecting a swap route.
-        </p>
-      </div>
-    </div>
-
-    <div className="review-details">
-      <div>
-        <span>NETWORK</span>
-        <strong>Solana</strong>
-      </div>
-
-      <div>
-        <span>WALLET</span>
-        <strong>
-          {address
-            ? `${address.slice(0, 6)}...${address.slice(-6)}`
-            : "Not connected"}
-        </strong>
-      </div>
-
-      <div>
-        <span>STATUS</span>
-        <strong>Preview only</strong>
-      </div>
-    </div>
-
-    <div className="review-notice">
-      <ShieldCheck size={18} />
-      <p>
-        No wallet signature has been requested.
-        No funds will be transferred from this preview.
-      </p>
-    </div>
-
-    <div className="transaction-preview-actions">
-  <button
-    className="generate-portfolio-button"
-    onClick={handleCheckQuotes}
-    disabled={quoteLoading}
-  >
-    {quoteLoading
-      ? "Checking routes..."
-      : "Check Jupiter Quotes"}
-    <ChevronRight size={17} />
-  </button>
-
-  <button
-    className="new-portfolio-button"
-    onClick={() => setTransactionPreview(false)}
-  >
-    Close Preview
-  </button>
-</div>
-{quoteError && (
-  <div className="portfolio-error">
-    <X size={17} />
-    <span>{quoteError}</span>
-  </div>
-)}
-
-{quoteResults.length > 0 && (
-  <div className="quote-results">
-    <div className="review-header">
-      <div>
-        <span>JUPITER ROUTES</span>
-        <h3>Quote results</h3>
-      </div>
-    </div>
-
-    {quoteResults.map((result) => (
-      <div
-        className="review-allocation-row"
-        key={result.symbol}
-      >
-        <div>
-          <strong>{result.symbol}</strong>
-          <p>
-            {formatMoney(result.amount)}
-          </p>
         </div>
-
-        <div>
-          <strong>{result.status}</strong>
-          {result.quote?.outAmount && (
-  <span>
-    Estimated output:{" "}
-    {formatTokenAmount(
-      result.quote.outAmount,
-      result.decimals
-    )}{" "}
-    tokens
-  </span>
-)}
-          {result.error && (
-            <span>{result.error}</span>
-          )}
-        </div>
-      </div>
-    ))}
-  </div>
-)}
-
-<DevnetDemoPanel
-  address={address}
-  allocations={portfolio.allocations}
-/>
-
-  </div>
-)}
-
-        </div>
-
       )}
-
-    </div>
-  </div>
-)}
 
       {/* HEADER */}
 
@@ -1002,15 +1170,15 @@ const [quoteError, setQuoteError] = useState("");
 
             </div>
 
-           <button
-  onClick={() => {
-    setReviewing(true);
-    setConfirmed(false);
-  }}
->
-  Review Portfolio
-  <ChevronRight size={16} />
-</button>
+            <button
+              onClick={() => {
+                setReviewStep(1);
+                setReviewing(true);
+              }}
+            >
+              Review Portfolio
+              <ChevronRight size={16} />
+            </button>
 
           </div>
 
