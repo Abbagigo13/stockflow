@@ -1,5 +1,4 @@
-const JUPITER_API =
-  "https://api.jup.ag/price/v3";
+
 
 /*
  * Historical chart cache.
@@ -33,20 +32,78 @@ export async function fetchAsset(symbol) {
    JUPITER
 ========================================================= */
 
-export async function fetchJupiterPrice(mint) {
-  const response = await fetch(
-    `${JUPITER_API}?ids=${encodeURIComponent(mint)}`
-  );
+/*
+ * Price requests made within a short moment of each other are
+ * merged into ONE request to /api/jupiter-price, because Jupiter
+ * rate limits many separate calls. The server keeps a short cache.
+ */
+let priceBatch = null;
 
-  if (!response.ok) {
-    throw new Error(
-      "Jupiter price request failed"
-    );
+function getPriceBatch() {
+  if (!priceBatch) {
+    const batch = { mints: new Set(), waiters: [] };
+
+    priceBatch = batch;
+
+    setTimeout(() => {
+      if (priceBatch === batch) {
+        priceBatch = null;
+      }
+
+      flushPriceBatch(batch);
+    }, 120);
   }
 
-  const data = await response.json();
+  return priceBatch;
+}
 
-  return data[mint] || null;
+async function flushPriceBatch(batch) {
+  try {
+    const response = await fetch(
+      `/api/jupiter-price?ids=${encodeURIComponent(
+        [...batch.mints].join(",")
+      )}`
+    );
+
+    const text = await response.text();
+
+    let data;
+
+    try {
+      data = JSON.parse(text);
+    } catch {
+      throw new Error(
+        "Price proxy returned an invalid response"
+      );
+    }
+
+    if (response.status === 429) {
+      throw new Error(
+        "Jupiter price data is temporarily rate limited."
+      );
+    }
+
+    if (!response.ok || data?.success === false) {
+      throw new Error(
+        data?.error || "Jupiter price request failed"
+      );
+    }
+
+    batch.waiters.forEach(({ mint, resolve }) =>
+      resolve(data[mint] || null)
+    );
+  } catch (error) {
+    batch.waiters.forEach(({ reject }) => reject(error));
+  }
+}
+
+export function fetchJupiterPrice(mint) {
+  return new Promise((resolve, reject) => {
+    const batch = getPriceBatch();
+
+    batch.mints.add(mint);
+    batch.waiters.push({ mint, resolve, reject });
+  });
 }
 
 
