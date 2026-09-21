@@ -12,6 +12,7 @@ import {
   runDevnetChecks,
   sendDevnetSelfTransfer,
 } from "../lib/devnetTest";
+import { addActivity } from "../lib/activity";
 
 function formatMoney(value) {
   return `$${Number(value || 0).toLocaleString("en-US", {
@@ -123,6 +124,12 @@ export default function DevnetDemoPanel({
       });
 
       setTxResult(result);
+            addActivity({
+        kind: "Devnet test transfer (to self)",
+        network: "devnet",
+        signature: result.signature,
+        address,
+      });
       setTxStatus("success");
     } catch (error) {
       setTxError(friendlyError(error));

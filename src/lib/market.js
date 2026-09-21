@@ -1,9 +1,6 @@
 const JUPITER_API =
   "https://api.jup.ag/price/v3";
 
-const BIRDEYE_API =
-  "https://public-api.birdeye.so";
-
 /*
  * Historical chart cache.
  *
@@ -235,385 +232,53 @@ function normalizeHistoricalData(result) {
 
 
 /* =========================================================
-   BIRDEYE HISTORICAL PRICE
-========================================================= */
-
-async function fetchHistoricalPriceSeries(
-  mint,
-  timeframe
-) {
-  const apiKey =
-    import.meta.env
-      .VITE_BIRDEYE_API_KEY;
-
-  if (!apiKey) {
-    throw new Error(
-      "Birdeye API key is missing. Add VITE_BIRDEYE_API_KEY to .env.local."
-    );
-  }
-
-  const now =
-    Math.floor(
-      Date.now() / 1000
-    );
-
-
-  /*
-   * Timeframe configuration.
-   */
-  const ranges = {
-    "1H": {
-      seconds:
-        60 * 60,
-      type: "1m",
-    },
-
-    "1D": {
-      seconds:
-        24 * 60 * 60,
-      type: "15m",
-    },
-
-    "1W": {
-      seconds:
-        7 * 24 * 60 * 60,
-      type: "1H",
-    },
-
-    "1M": {
-      seconds:
-        30 * 24 * 60 * 60,
-      type: "4H",
-    },
-  };
-
-  const selected =
-    ranges[timeframe] ||
-    ranges["1D"];
-
-  const timeFrom =
-    now - selected.seconds;
-
-
-  const params =
-    new URLSearchParams({
-      address: mint,
-      address_type: "token",
-      type: selected.type,
-      time_from:
-        String(timeFrom),
-      time_to:
-        String(now),
-      ui_amount_mode:
-        "scaled",
-    });
-
-
-  const url =
-    `${BIRDEYE_API}/defi/history_price?${params.toString()}`;
-
-
-  const response =
-    await fetch(url, {
-      headers: {
-        "X-API-KEY":
-          apiKey,
-
-        "x-chain":
-          "solana",
-      },
-    });
-
-
-  if (!response.ok) {
-    const text =
-      await response.text();
-
-    if (
-      response.status === 429
-    ) {
-      throw new Error(
-        "Historical data is temporarily rate limited."
-      );
-    }
-
-    throw new Error(
-      `Historical price request failed: ${response.status} ${text}`
-    );
-  }
-
-
-  const result =
-    await response.json();
-
-
-  /*
-   * Temporary debugging.
-   *
-   * This lets us inspect exactly what
-   * Birdeye sends back.
-   */
-  console.log(
-    "[StockFlow] Birdeye historical response:",
-    result
-  );
-
-
-  return normalizeHistoricalData(
-    result
-  );
-}
-
-
-/* =========================================================
-   BIRDEYE OHLCV FALLBACK
+   HISTORICAL PRICE REQUEST (through our own server)
 ========================================================= */
 
 /*
- * OHLCV is designed specifically for
- * market charts.
- *
- * If history_price returns zero points,
- * we try this endpoint.
+ * The Birdeye API key now lives on the server. The browser asks
+ * /api/price-history, and that function calls Birdeye for us.
  */
-async function fetchHistoricalOHLCV(
-  mint,
-  timeframe
-) {
-  const apiKey =
-    import.meta.env
-      .VITE_BIRDEYE_API_KEY;
-
-  if (!apiKey) {
-    throw new Error(
-      "Birdeye API key is missing. Add VITE_BIRDEYE_API_KEY to .env.local."
-    );
-  }
-
-  const now =
-    Math.floor(
-      Date.now() / 1000
-    );
-
-
-  const ranges = {
-    "1H": {
-      seconds:
-        60 * 60,
-      type: "1m",
-    },
-
-    "1D": {
-      seconds:
-        24 * 60 * 60,
-      type: "15m",
-    },
-
-    "1W": {
-      seconds:
-        7 * 24 * 60 * 60,
-      type: "1H",
-    },
-
-    "1M": {
-      seconds:
-        30 * 24 * 60 * 60,
-      type: "4H",
-    },
-  };
-
-
-  const selected =
-    ranges[timeframe] ||
-    ranges["1D"];
-
-
-  const timeFrom =
-    now - selected.seconds;
-
-
-  const params =
-    new URLSearchParams({
-      address: mint,
-      address_type: "token",
-      type: selected.type,
-      time_from:
-        String(timeFrom),
-      time_to:
-        String(now),
-      currency: "usd",
-      ui_amount_mode:
-        "scaled",
-    });
-
-
-  const url =
-    `${BIRDEYE_API}/defi/ohlcv?${params.toString()}`;
-
-
-  const response =
-    await fetch(url, {
-      headers: {
-        "X-API-KEY":
-          apiKey,
-
-        "x-chain":
-          "solana",
-      },
-    });
-
-
-  if (!response.ok) {
-    const text =
-      await response.text();
-
-    if (
-      response.status === 429
-    ) {
-      throw new Error(
-        "Historical data is temporarily rate limited."
-      );
-    }
-
-    throw new Error(
-      `OHLCV request failed: ${response.status} ${text}`
-    );
-  }
-
-
-  const result =
-    await response.json();
-
-
-  console.log(
-    "[StockFlow] Birdeye OHLCV response:",
-    result
-  );
-
-
-  const items =
-    result?.data?.items ||
-    result?.data ||
-    [];
-
-
-  if (!Array.isArray(items)) {
-    return [];
-  }
-
-
-  return items
-    .map((item) => ({
-      timestamp:
-        Number(
-          item?.unixTime ??
-            item?.unix_time ??
-            item?.timestamp ??
-            item?.time
-        ) * 1000,
-
-      /*
-       * Closing price.
-       */
-      price:
-        Number(
-          item?.c ??
-            item?.close ??
-            item?.closePrice
-        ),
-    }))
-    .filter(
-      (item) =>
-        Number.isFinite(
-          item.timestamp
-        ) &&
-        Number.isFinite(
-          item.price
-        ) &&
-        item.price > 0
-    );
-}
-
-
-/* =========================================================
-   HISTORICAL REQUEST MANAGER
-========================================================= */
-
 async function requestHistoricalPrices(
   mint,
   timeframe
 ) {
+  const params = new URLSearchParams({
+    mint,
+    timeframe,
+  });
+
+  const response = await fetch(
+    `/api/price-history?${params.toString()}`
+  );
+
+  const text = await response.text();
+
+  let result;
+
   try {
-    /*
-     * First try history_price.
-     */
-    const historical =
-      await fetchHistoricalPriceSeries(
-        mint,
-        timeframe
-      );
-
-
-    /*
-     * If we received usable points,
-     * we're done.
-     */
-    if (
-      historical.length > 0
-    ) {
-      return historical;
-    }
-
-
-    /*
-     * History endpoint worked but
-     * returned zero usable points.
-     */
-    console.warn(
-      "[StockFlow] Historical price returned 0 points. Trying OHLCV..."
-    );
-
-
-    return await fetchHistoricalOHLCV(
-      mint,
-      timeframe
-    );
-  } catch (error) {
-
-    /*
-     * Do NOT make another request if
-     * Birdeye explicitly rate-limited us.
-     */
-    if (
-      error?.message?.includes(
-        "rate limited"
-      )
-    ) {
-      throw error;
-    }
-
-
-    /*
-     * Try OHLCV when history_price
-     * fails for another reason.
-     */
-    console.warn(
-      "[StockFlow] Historical price failed. Trying OHLCV fallback...",
-      error
-    );
-
-
-    return await fetchHistoricalOHLCV(
-      mint,
-      timeframe
+    result = JSON.parse(text);
+  } catch {
+    throw new Error(
+      "Price history proxy returned an invalid response"
     );
   }
+
+  if (response.status === 429) {
+    throw new Error(
+      "Historical data is temporarily rate limited."
+    );
+  }
+
+  if (!response.ok || result?.success === false) {
+    throw new Error(
+      result?.error ||
+        "Unable to load price history"
+    );
+  }
+
+  return normalizeHistoricalData(result);
 }
-
-
-/* =========================================================
-   PUBLIC HISTORICAL PRICE FUNCTION
-========================================================= */
 
 export async function fetchHistoricalPrices(
   mint,

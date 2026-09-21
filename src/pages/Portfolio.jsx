@@ -1,4 +1,5 @@
 import {
+  ArrowLeft,
   Brain,
   Check,
   ChevronRight,
@@ -49,6 +50,7 @@ const REVIEW_STEPS = [
 export default function Portfolio({
   address,
   onConnect,
+  onNavigate,
 }) {
   const [amount, setAmount] = useState("100");
   const [riskProfile, setRiskProfile] =
@@ -579,6 +581,14 @@ export default function Portfolio({
           </div>
         </div>
       )}
+            <button
+        type="button"
+        className="sfr-back-link"
+        onClick={() => onNavigate?.("terminal")}
+      >
+        <ArrowLeft size={16} />
+        Back to Terminal
+      </button>
 
       {/* HEADER */}
 

@@ -160,7 +160,12 @@ export default function Terminal({
           AI Portfolio
         </button>
 
-        <button className="side-link">
+                <button
+          className="side-link"
+          onClick={() =>
+            onNavigate?.("onchain")
+          }
+        >
           <ShieldCheck size={16} />
           Onchain
         </button>

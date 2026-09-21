@@ -6,6 +6,7 @@ import Landing from "./pages/Landing";
 import Terminal from "./pages/Terminal";
 import Stock from "./pages/Stock";
 import Portfolio from "./pages/Portfolio";
+import Onchain from "./pages/Onchain";
 
 import { useWallet } from "./hooks/useWallet";
 
@@ -69,11 +70,28 @@ function App() {
       />
     );
   }
+    if (page === "onchain") {
+    return (
+      <Onchain
+        onNavigate={navigate}
+        onSelectStock={(symbol) =>
+          navigate("stock", symbol)
+        }
+        address={address}
+        connected={connected}
+        connecting={connecting}
+        walletError={walletError}
+        onConnect={connectWallet}
+        onDisconnect={disconnectWallet}
+      />
+    );
+  }
 
   if (page === "portfolio") {
     return (
       <Portfolio
         address={address}
+        onNavigate={navigate}
         connected={connected}
         connecting={connecting}
         walletError={walletError}
