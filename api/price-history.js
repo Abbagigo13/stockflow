@@ -1,4 +1,5 @@
 /* global process */
+import { checkRateLimit } from "./_rateLimit.js";
 
 const BIRDEYE_API = "https://public-api.birdeye.so";
 const CACHE_TTL_MS = 2 * 60 * 1000;
@@ -60,6 +61,21 @@ export default async function handler(req, res) {
     return res.status(405).json({
       success: false,
       error: "Method not allowed",
+    });
+  }
+
+    const limit = checkRateLimit(req, {
+    name: "data",
+    limit: 120,
+    windowMs: 10 * 60 * 1000,
+  });
+
+  if (!limit.allowed) {
+    res.setHeader("Retry-After", String(limit.retryAfter));
+
+    return res.status(429).json({
+      success: false,
+      error: `Too many requests. Please try again in ${limit.retryAfter} seconds.`,
     });
   }
 

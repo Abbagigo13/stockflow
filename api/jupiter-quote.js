@@ -1,4 +1,8 @@
+/* global process */
+import { checkRateLimit } from "./_rateLimit.js";
 
+const MINT_PATTERN = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
+const MAX_AMOUNT_DIGITS = 13;
 const JUPITER_API =
   "https://api.jup.ag/swap/v2/order";
 
@@ -6,6 +10,19 @@ export default async function handler(req, res) {
   if (req.method !== "GET") {
     return res.status(405).json({
       error: "Method not allowed",
+    });
+  }
+    const limit = checkRateLimit(req, {
+    name: "quote",
+    limit: 60,
+    windowMs: 10 * 60 * 1000,
+  });
+
+  if (!limit.allowed) {
+    res.setHeader("Retry-After", String(limit.retryAfter));
+
+    return res.status(429).json({
+      error: `Too many quote requests. Please try again in ${limit.retryAfter} seconds.`,
     });
   }
 
@@ -36,6 +53,16 @@ export default async function handler(req, res) {
     return res.status(400).json({
       error:
         "Amount must be a positive integer in atomic units",
+    });
+  }
+
+    if (
+    !MINT_PATTERN.test(inputMint) ||
+    !MINT_PATTERN.test(outputMint) ||
+    amount.length > MAX_AMOUNT_DIGITS
+  ) {
+    return res.status(400).json({
+      error: "Invalid token address or amount",
     });
   }
 

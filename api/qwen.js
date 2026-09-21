@@ -1,5 +1,13 @@
 
 /* global process */
+import { checkRateLimit } from "./_rateLimit.js";
+
+const QWEN_MODEL = process.env.QWEN_MODEL || "qwen3.8-max";
+const ALLOWED_MODELS = new Set([QWEN_MODEL]);
+const MAX_MESSAGES = 6;
+const MAX_TOTAL_CHARS = 60000;
+const MAX_OUTPUT_TOKENS = 4000;
+const ALLOWED_ROLES = new Set(["system", "user", "assistant"]);
 
 const QWEN_URL =
   "https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions";
@@ -18,14 +26,49 @@ export default async function handler(req, res) {
       });
     }
 
-    const {
-      messages,
-      model = "qwen3.8-max",
-    } = req.body || {};
+        const limit = checkRateLimit(req, {
+      name: "qwen",
+      limit: 10,
+      windowMs: 10 * 60 * 1000,
+    });
+
+    if (!limit.allowed) {
+      res.setHeader("Retry-After", String(limit.retryAfter));
+
+      return res.status(429).json({
+        error: `Too many AI requests. Please try again in ${limit.retryAfter} seconds.`,
+      });
+    }
+
+          const { messages, model: requestedModel } = req.body || {};
+
+      const model = ALLOWED_MODELS.has(requestedModel)
+        ? requestedModel
+        : QWEN_MODEL;
 
     if (!Array.isArray(messages) || messages.length === 0) {
       return res.status(400).json({
         error: "messages must be a non-empty array.",
+      });
+    }
+        const totalChars = messages.reduce(
+      (sum, item) =>
+        sum + (typeof item?.content === "string" ? item.content.length : 0),
+      0
+    );
+
+    const wellFormed =
+      messages.length <= MAX_MESSAGES &&
+      messages.every(
+        (item) =>
+          item &&
+          ALLOWED_ROLES.has(item.role) &&
+          typeof item.content === "string"
+      );
+
+    if (!wellFormed || totalChars > MAX_TOTAL_CHARS) {
+      return res.status(400).json({
+        error: "Invalid or oversized request.",
       });
     }
 
@@ -35,11 +78,13 @@ export default async function handler(req, res) {
         Authorization: `Bearer ${process.env.DASHSCOPE_API_KEY}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
+            body: JSON.stringify({
         model,
         messages,
         temperature: 0.2,
+        max_tokens: MAX_OUTPUT_TOKENS,
       }),
+      signal: AbortSignal.timeout(55000),
     });
 
     const responseText = await response.text();
