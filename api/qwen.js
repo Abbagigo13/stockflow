@@ -84,7 +84,7 @@ export default async function handler(req, res) {
         temperature: 0.2,
         max_tokens: MAX_OUTPUT_TOKENS,
       }),
-      signal: AbortSignal.timeout(55000),
+            signal: AbortSignal.timeout(120000),
     });
 
     const responseText = await response.text();
