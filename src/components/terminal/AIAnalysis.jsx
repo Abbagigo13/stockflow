@@ -85,12 +85,6 @@ export default function AIAnalyst({ analysis, stock }) {
 
   const price = Number(metrics.price || stock.price || 0);
 
-  const referencePrice = Number(
-    metrics.referencePrice ||
-      stock.referencePrice ||
-      0
-  );
-
   const deviation = Number(
     metrics.deviation ??
       stock.priceDeviation ??

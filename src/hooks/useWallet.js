@@ -13,10 +13,14 @@ export function useWallet() {
 
     const wallet = window.solana;
 
-    // Check whether the wallet is already connected.
+        // Check whether the wallet is already connected.
+    // Deferred with queueMicrotask so this doesn't set state
+    // synchronously during the effect's initial run.
     if (wallet.isConnected && wallet.publicKey) {
-      setAddress(wallet.publicKey.toString());
-      setConnected(true);
+      queueMicrotask(() => {
+        setAddress(wallet.publicKey.toString());
+        setConnected(true);
+      });
     }
 
     function handleConnect(publicKey) {
