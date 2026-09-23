@@ -1,288 +1,100 @@
-
 # StockFlow AI
 
-> AI intelligence for tokenized equities on Solana.
+**AI-powered market intelligence and portfolio building for tokenized equities (xStocks) on Solana.**
 
-StockFlow AI is a Solana-focused AI portfolio and market intelligence application for tokenized equities (xStocks). It combines live market data, AI-generated portfolio allocations, Jupiter quote integration, and a planned wallet-based onchain execution flow.
+Live demo: <https://stockflow-kappa-three.vercel.app>
 
-## Project
+StockFlow lets anyone explore tokenized stocks trading on Solana, generate an AI-built portfolio from live market data, and safely test wallet transactions on Devnet before any real funds are ever involved.
 
-- **Project name:** StockFlow AI
-- **GitHub:** https://github.com/Abbagigo13/stockflow
-- **Local path:** `C:\Users\PC\Downloads\stockflow`
+---
+
+## What it does
+
+- **Market Terminal** — live prices, 24h change, liquidity, and price history charts for 10 tokenized stocks (NVDAx, AAPLx, TSLAx, SPYx, MSFTx, AMZNx, GOOGLx, METAx, QQQx, COINx), pulled from onchain Solana market data.
+- **AI Portfolio Builder** — describe an investment amount, risk profile, and goals; an AI model (Qwen) proposes a diversified allocation across the tracked xStocks, with reasoning per asset.
+- **Onchain page** — wallet status, connected network, your tokenized stock holdings, StockFlow transaction history, and a table of all tracked assets with their Solana token addresses.
+- **Jupiter quotes** — real, live swap-quote data from Jupiter for each proposed allocation (quote-only; nothing is executed).
+- **Devnet Demo Mode** — a guided, step-by-step flow to safely test wallet signing end-to-end (network verification, balance check, and a harmless self-transfer) using free Solana Devnet SOL, with clear on-screen confirmation at every step.
+- **Price integrity view** — shows the onchain (Solana market) price next to the reference stock price for each asset, so you can see how closely the tokenized version tracks the real thing.
+
+## Why Solana
+
+Tokenized equities already trade on Solana today. StockFlow's wedge is the **investing** side of that: turning raw onchain price and liquidity data into something a normal person can actually use to build and understand a portfolio, with live prices only Solana can provide.
+
+## Safety by design
+
+- **Real mainnet execution is disabled.** StockFlow never signs or sends a real trade on mainnet. All swap information shown is quote-only.
+- **Wallet signing is proven end-to-end on Devnet**, not on mainnet, so anyone can try the full flow — connect, verify, sign, confirm onchain — with zero financial risk.
+- **StockFlow never holds your keys.** Every transaction, on any network, is signed in your own wallet (Phantom).
+- **API keys never reach the browser.** Birdeye, Jupiter, and the AI provider are all called from server-side functions; the browser only talks to StockFlow's own API.
+- **Rate limiting and input validation** on every server endpoint to prevent abuse of the underlying data and AI quotas.
+
+## Tech stack
+
 - **Frontend:** React + Vite
-- **Blockchain:** Solana
-- **AI:** Qwen through a Vercel serverless API
-- **Market data:** xStocks API and Jupiter Price API
-- **Swap quotes:** Jupiter Swap API V2 through a server-side proxy
+- **Backend:** Vercel serverless functions (`/api`)
+- **Blockchain:** Solana (`@solana/web3.js`), Phantom wallet
+- **Market data:** xStocks API, Jupiter Price API, Birdeye (historical prices)
+- **AI:** Qwen (via DashScope), used for portfolio generation
+- **Deployment:** Vercel
 
----
+## Project structure
 
-## Current progress
+stockflow/
+├── api/ # Server functions (Vercel)
+│ ├── xstocks-asset.js # xStocks asset metadata proxy
+│ ├── jupiter-quote.js # Jupiter swap quote proxy (quote-only)
+│ ├── jupiter-price.js # Jupiter live price proxy (batched, cached)
+│ ├── price-history.js # Birdeye historical price proxy (cached)
+│ ├── qwen.js # AI portfolio generation proxy
+│ └── _rateLimit.js # Shared per-visitor rate limiter
+├── src/
+│ ├── pages/ # Landing, Terminal, Stock, Portfolio, Onchain
+│ ├── components/ # UI components (terminal, landing, portfolio review, Devnet demo)
+│ ├── hooks/ # useWallet, useStock, usePortfolio, usePortfolioAI
+│ ├── lib/ # market data, Solana config, Devnet test logic, activity log
+│ └── data/stocks.js # Tracked asset list
+└── README.md
 
-### Completed
+## Running locally
 
-- [x] React/Vite application setup
-- [x] StockFlow landing page
-- [x] Market terminal interface
-- [x] AI Portfolio interface
-- [x] AI portfolio generation through Qwen
-- [x] xStocks asset data integration
-- [x] Live Jupiter market prices
-- [x] Phantom wallet connection hook
-- [x] Jupiter quote-only integration
-- [x] Server-side xStocks asset proxy
-- [x] Jupiter quote proxy
-- [x] Readable token output formatting
-- [x] Quote results for SPYx, AAPLx, NVDAx, and TSLAx
+**Requirements:** Node.js, npm, and the [Vercel CLI](https://vercel.com/docs/cli).
 
-### Latest confirmed quote results
+1. Clone the repo and install dependencies:
 
-The AI portfolio generated these allocations:
-
-| Asset | Allocation | Status |
-|---|---:|---|
-| SPYx | $40 | Quote available |
-| AAPLx | $25 | Quote available |
-| NVDAx | $20 | Quote available |
-| TSLAx | $15 | Quote available |
-
-The displayed output amounts are converted from atomic units using the token decimals.
-
-A temporary TSLAx `fetch failed` error occurred, but the quote succeeded when checked again.
-
----
-
-## Important files
-
-### Frontend
-
-- `src/App.jsx`
-- `src/App.css`
-- `src/pages/Landing.jsx`
-- `src/pages/Terminal.jsx`
-- `src/pages/Stock.jsx`
-- `src/pages/Portfolio.jsx`
-
-### Wallet
-
-- `src/hooks/useWallet.js`
-
-### AI
-
-- `src/hooks/usePortfolioAI.js`
-- `src/lib/portfolioAI.js`
-- `api/qwen.js`
-
-### Market data
-
-- `src/lib/market.js`
-
-### Jupiter quotes
-
-- `src/lib/jupiterQuote.js`
-- `api/jupiter-quote.js`
-
-### xStocks proxy
-
-- `api/xstocks-asset.js`
-
----
-
-## Current Jupiter architecture
-
-The current integration is quote-only.
-
-1. The AI generates portfolio allocations.
-2. StockFlow retrieves the xStocks asset.
-3. StockFlow finds the Solana deployment.
-4. StockFlow obtains the Solana token address.
-5. StockFlow requests a Jupiter quote using USDC as the input token.
-6. StockFlow displays the estimated token output.
-7. No wallet signature is requested.
-8. No transaction is submitted.
-
-The Jupiter quote endpoint is accessed through:
-
-`/api/jupiter-quote`
-
-The xStocks asset endpoint is accessed through:
-
-`/api/xstocks-asset`
-
-The frontend should not expose secret API keys.
-
----
-
-## Environment variables
-
-The project uses environment variables for server-side API access.
-
-Known variables include:
-
-```env
-DASHSCOPE_API_KEY=your_key
-JUPITER_API_KEY=your_key
+```bash
+   git clone https://github.com/Abbagigo13/stockflow.git
+   cd stockflow
+   npm install
 ```
 
-Do not commit `.env`, `.env.local`, or any secret API keys to GitHub.
+1. Create a `.env.local` file in the project root with:
 
-Confirm that the environment files are listed in `.gitignore`.
+BIRDEYE_API_KEY=your_birdeye_key
+DASHSCOPE_API_KEY=your_dashscope_key
+JUPITER_API_KEY=your_jupiter_key
 
----
+   None of these are exposed to the browser — they're only used inside `/api` server functions.
 
-## Current safety status
+1. Run the app (this runs both the frontend and the serverless functions together):
 
-The application currently displays Jupiter quotes only.
-
-There is no completed live transaction execution flow.
-
-Do not enable real mainnet fund transfers until:
-
-- Wallet and network validation are implemented.
-- Transaction details are shown clearly.
-- The user explicitly confirms the transaction.
-- The transaction is signed by the user's wallet.
-- Execution and confirmation handling are tested carefully.
-
----
-
-## Next development phase: Devnet
-
-The next goal is to create a safe test environment.
-
-### Important network distinction
-
-Solana Devnet is separate from Solana mainnet.
-
-The existing xStock token addresses and Jupiter mainnet quote routes should not automatically be assumed to work on Devnet.
-
-The Devnet implementation should use Devnet-compatible tokens and transactions or a simulated swap flow.
-
-### Planned Devnet tasks
-
-- [ ] Add a network selector
-- [ ] Add Devnet Demo Mode
-- [ ] Connect Phantom to Devnet
-- [ ] Validate the connected network
-- [ ] Display wallet address and network
-- [ ] Obtain free Devnet SOL from a faucet
-- [ ] Test a harmless Devnet transaction
-- [ ] Add simulated stock execution preview
-- [ ] Keep real mainnet execution disabled by default
-
----
-
-## Future mainnet execution
-
-After the Devnet testing stage, investigate the Jupiter Swap API V2 execution flow.
-
-Planned process:
-
-1. Validate the connected wallet.
-2. Validate the network.
-3. Request a Jupiter order with a `taker` wallet address.
-4. Display the order details.
-5. Ask the user for explicit confirmation.
-6. Request the wallet signature.
-7. Submit the signed transaction through Jupiter.
-8. Display execution status.
-9. Confirm the transaction on Solana.
-10. Handle errors and failed transactions safely.
-
-Never claim a transaction succeeded without receiving confirmation from the execution and blockchain confirmation process.
-
----
-
-## Development commands
-
-Install dependencies:
-
-```powershell
-npm install
+```bash
+   vercel dev
 ```
 
-Build the application:
+1. Open `http://localhost:3000`.
 
-```powershell
-npm run build
-```
+## Trying the Devnet wallet test
 
-Start the development environment with Vercel serverless functions:
+1. Install [Phantom](https://phantom.app/) and switch it to **Devnet** (Settings → Developer Settings → Testnet Mode → Solana Devnet).
+2. Get free Devnet SOL from the [Solana faucet](https://faucet.solana.com).
+3. In StockFlow, generate an AI portfolio, open **Review Portfolio → Continue to Devnet test**, and follow the on-screen steps.
+4. A tiny (0.001 SOL) self-transfer is signed and confirmed on Devnet, with a live Solana Explorer link once confirmed.
 
-```powershell
-vercel dev
-```
+## Disclaimer
 
-Use `vercel dev` when testing the `/api/qwen`, `/api/jupiter-quote`, and `/api/xstocks-asset` endpoints.
+StockFlow AI generates hypothetical portfolio analysis using available market data. It is not financial advice and does not guarantee returns. Tokenized stock trading may not be available or legal in all jurisdictions — check local regulations before trading.
 
----
+## Built for
 
-## Git workflow
-
-Check the current state:
-
-```powershell
-git status
-```
-
-View recent commits:
-
-```powershell
-git log --oneline -5
-```
-
-Stage changes:
-
-```powershell
-git add .
-```
-
-Create a commit:
-
-```powershell
-git commit -m "Update StockFlow project handoff"
-```
-
-Push to GitHub:
-
-```powershell
-git push origin main
-```
-
-The branch may differ. Check the current branch with:
-
-```powershell
-git branch --show-current
-```
-
----
-
-## Handoff instructions for future chats
-
-When continuing this project, start from this README.
-
-Current stopping point:
-
-> Jupiter quote integration works for SPYx, AAPLx, NVDAx, and TSLAx. The next task is to implement a safe Devnet wallet-testing mode. Do not directly connect mainnet xStock quotes to Devnet transactions. Keep quote-only behavior safe while building wallet validation and a harmless Devnet test transaction.
-
-Preferred development style:
-
-- Provide complete copy-paste code.
-- Give step-by-step PowerShell commands.
-- Explain what each change does.
-- Check the build after code changes.
-- Avoid inventing token addresses.
-- Do not request or expose secret API keys.
-- Keep real transaction execution disabled until it is tested and explicitly confirmed.
-
----
-
-## Last known project state
-
-- Last known local commit: `79dd98f`
-- Last known working tree: clean at the time of the recorded commit
-- GitHub repository: `Abbagigo13/stockflow`
-- AI portfolio generation: working
-- Jupiter quote integration: working
-- Devnet transaction flow: not yet implemented
+[Stocklana](https://hackathons.solana.com/hackathons/stocklana) — a Solana Foundation hackathon for tokenized equities.
